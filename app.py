@@ -44,9 +44,6 @@ class Field:
         if(number != -1):
             tileToUpdate.set_number(number)
         
-
-
-
 class ConsoleUI:
     def __init__(self, grid_dimension):
         self.window = tk.Tk()
@@ -56,10 +53,7 @@ class ConsoleUI:
         self.default_padding = 20
 
     def get_dimension_by_cell_count(self,count):
-        if(count > 5):
-            return 50
-        elif(count >= 3):
-            return 75
+        return 75
 
     def add_padding_to_cell(self,cell, row, col):
         if(col == 0):
@@ -105,193 +99,12 @@ class ConsoleUI:
             self.field.set_tile(row,col,tile['label'],tile['border'])
             self.add_border_to_cell(canvas, tile['border'])
             if(len(tile['label']) != 0):
-                canvas.create_text(10,10, text=tile['label'])
-
-        """ for i in range(self.dimension):
-            for j in range(self.dimension):
-                frame = tk.Frame(self.window, width=default_dimension, height=default_dimension, relief="solid", borderwidth=2, highlightbackground="black")
-                self.add_padding_to_cell(frame, i, j)
-                frame.grid_propagate(False)
-                if(len(self.field.get_tile(i,j).get_label()) != 0):
-                    label = tk.Label(frame, compound=tk.CENTER, text=self.field.get_tile(i,j).get_label())
-                    label.grid(row = i, column= j, sticky=tk.NSEW) """
-                   
+                canvas.create_text(20,10, text=tile['label'])
         self.window.mainloop()
 
-file = open("levels\level1.json")
+file = open("levels\level4.json")
 levelData = json.load(file)
-for i in levelData['tiles']:
-    print(i)
-
 file.close()
 
 ui = ConsoleUI(int(levelData['dimension']))
 ui.create_grid(levelData['tiles'])
-
-""" window = tk.Tk()
-
-canvas = tk.Canvas(window, width=100, height=100, bg='white', highlightthickness=0)
-canvas.grid(row=0, column=0, padx=(20, 0), pady=(20,0), sticky="nsew")
-canvas.grid_propagate(False)
-
-canvas.create_text(10,10, text="18 *")
-
-# Nakresli čiaru na pravej strane
-canvas.create_line(100, 0, 100, 100, fill='black', width=2)
-
-# Nakresli čiaru na dolna strane
-canvas.create_line(0, 100, 100, 100, fill='lightgray', width=2)
-
-#lava ciara
-canvas.create_line(0, 0, 0, 100, fill="black", width= 2)
-
-#horna ciara
-canvas.create_line(0, 0, 100, 0, fill="black", width=2)
-
-#######################################################################
-
-canvas = tk.Canvas(window, width=100, height=100, bg='white', highlightthickness=0)
-canvas.grid(row=0, column=1, pady=(20,0), sticky="nsew")
-canvas.grid_propagate(False)
-
-canvas.create_text(10,10, text="2 /")
-
-#prava
-canvas.create_line(100, 0, 100, 100, fill='lightgray', width=2)
-#dolna
-canvas.create_line(0, 100, 100, 100, fill='black', width=2)
-#lava
-canvas.create_line(0, 0, 0, 100, fill="black", width= 2)
-#horna
-canvas.create_line(0, 0, 100, 0, fill="black", width=2)
-
-#######################################################################
-
-canvas = tk.Canvas(window, width=100, height=100, bg='white', highlightthickness=0)
-canvas.grid(row=0, column=2, pady=(20,0), padx=(0, 20), sticky="nsew")
-canvas.grid_propagate(False)
-
-#prava
-canvas.create_line(100, 0, 100, 100, fill='black', width=2)
-#dolna
-canvas.create_line(0, 100, 100, 100, fill='black', width=2)
-#lava
-canvas.create_line(0, 0, 0, 100, fill="lightgray", width= 2)
-#horna
-canvas.create_line(0, 0, 100, 0, fill="black", width=2)
-
-########################################################################
-
-canvas = tk.Canvas(window, width=100, height=100, bg='white', highlightthickness=0)
-canvas.grid(row=1, column=0, padx=(20,0), sticky="nsew")
-canvas.grid_propagate(False)
-
-#prava
-canvas.create_line(100, 0, 100, 100, fill='lightgray', width=2)
-
-#dolna
-canvas.create_line(0, 100, 100, 100, fill='black', width=2)
-
-#lava
-canvas.create_line(0, 0, 0, 100, fill="black", width= 2)
-
-#horna
-canvas.create_line(0, 0, 100, 0, fill="lightgray", width=2)
-
-
-########################################################################
-
-canvas = tk.Canvas(window, width=100, height=100, bg='white', highlightthickness=0)
-canvas.grid(row=1, column=1, sticky="nsew")
-canvas.grid_propagate(False)
-
-#prava
-canvas.create_line(100, 0, 100, 100, fill='black', width=2)
-
-#dolna
-canvas.create_line(0, 100, 100, 100, fill='black', width=2)
-
-#lava
-canvas.create_line(0, 0, 0, 100, fill="lightgray", width= 2)
-
-#horna
-canvas.create_line(0, 0, 100, 0, fill="black", width=2)
-
-########################################################################
-
-canvas = tk.Canvas(window, width=100, height=100, bg='white', highlightthickness=0)
-canvas.grid(row=1, column=2, padx=(0,20), sticky="nsew")
-canvas.grid_propagate(False)
-
-canvas.create_text(10, 10, text="2 -")
-
-#prava
-canvas.create_line(100, 0, 100, 100, fill='black', width=2)
-
-#dolna
-canvas.create_line(0, 100, 100, 100, fill='lightgray', width=2)
-
-#lava
-canvas.create_line(0, 0, 0, 100, fill="black", width= 2)
-
-#horna
-canvas.create_line(0, 0, 100, 0, fill="black", width=2)
-
-########################################################################
-
-canvas = tk.Canvas(window, width=100, height=100, bg='white', highlightthickness=0)
-canvas.grid(row=2, column=0, padx=(20,0), sticky="nsew")
-canvas.grid_propagate(False)
-
-canvas.create_text(10,10, text="1 -")
-
-#prava
-canvas.create_line(100, 0, 100, 100, fill='lightgray', width=2)
-
-#dolna
-canvas.create_line(0, 100, 100, 100, fill='black', width=2)
-
-#lava
-canvas.create_line(0, 0, 0, 100, fill="black", width= 2)
-
-#horna
-canvas.create_line(0, 0, 100, 0, fill="black", width=2)
-
-
-########################################################################
-
-canvas = tk.Canvas(window, width=100, height=100, bg='white', highlightthickness=0)
-canvas.grid(row=2, column=1, sticky="nsew")
-canvas.grid_propagate(False)
-
-#prava
-canvas.create_line(100, 0, 100, 100, fill='black', width=2)
-
-#dolna
-canvas.create_line(0, 100, 100, 100, fill='black', width=2)
-
-#lava
-canvas.create_line(0, 0, 0, 100, fill="lightgray", width= 2)
-
-#horna
-canvas.create_line(0, 0, 100, 0, fill="black", width=2)
-
-########################################################################
-
-canvas = tk.Canvas(window, width=100, height=100, bg='white', highlightthickness=0)
-canvas.grid(row=2, column=2, padx=(0,20), sticky="nsew")
-canvas.grid_propagate(False)
-
-#prava
-canvas.create_line(100, 0, 100, 100, fill='black', width=2)
-
-#dolna
-canvas.create_line(0, 100, 100, 100, fill='black', width=2)
-
-#lava
-canvas.create_line(0, 0, 0, 100, fill="black", width= 2)
-
-#horna
-canvas.create_line(0, 0, 100, 0, fill="lightgray", width=2)
-
-window.mainloop() """

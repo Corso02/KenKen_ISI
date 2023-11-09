@@ -31,4 +31,5 @@ for(let row = 0; row < dimension; row++){
 }
 
 let data = JSON.stringify(resJson)
-fs.writeFileSync("level1.json", data, err => console.log("Chyba pri zapise", err))
+let levelNum = readLineSync.question("Zadajte cislo levelu: ")
+fs.writeFileSync(`level${levelNum}.json`, data, err => console.log("Chyba pri zapise", err))
