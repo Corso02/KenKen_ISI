@@ -3,6 +3,7 @@ import json
 import time
 import itertools
 from array import array
+import os
 
 class Tile:
     def __init__(self, row, col, number, label=""):
@@ -125,14 +126,24 @@ class Field:
                 
         return resArr 
 
+    def dfs_solve(self):
+        print("Solving using DFS")
+        self.get_tile(0,0).canvas.create_text(50, 50, text="8")
 
 class ConsoleUI:
-    def __init__(self, grid_dimension):
+    def __init__(self, grid_dimension = 0):
         self.window = tk.Tk()
         self.window.title("KenKen")
         self.dimension = grid_dimension
-        self.field = Field(grid_dimension)
+        if(grid_dimension != 0):
+            self.field = Field(grid_dimension)
         self.default_padding = 20
+
+    def set_dimension(self, dimension):
+        self.dimension = dimension
+    
+    def create_field(self):
+        self.field = Field(self.dimension)
 
     def get_dimension_by_cell_count(self,count):
         return 100
@@ -171,6 +182,7 @@ class ConsoleUI:
 
     def create_grid(self, tilesData):
         default_dimension = self.get_dimension_by_cell_count(self.dimension)
+        field_cotainer = tk.Frame(self.window)
         hashmap = {}
 
         for tile in tilesData:
@@ -196,7 +208,7 @@ class ConsoleUI:
         for tile in tilesData:
             row = int(tile['row'])
             col = int(tile['col'])
-            canvas = tk.Canvas(self.window, width=default_dimension, height=default_dimension, bg='white', highlightthickness=0)
+            canvas = tk.Canvas(field_cotainer, width=default_dimension, height=default_dimension, bg='white', highlightthickness=0)
             self.add_padding_to_cell(canvas, row, col)
             canvas.grid_propagate(False)
 
@@ -208,10 +220,27 @@ class ConsoleUI:
             self.field.set_tile(row,col,tile['label'],tile['border'], canvas=canvas, shadow_label=tile['shadow_label'])
 
             self.field.get_tile(row,col).set_available_numbers(availableNumbersHashMap[tile['shadow_label']])
-            self.field.get_tile(row,col).show_available_numbers()
+            #self.field.get_tile(row,col).show_available_numbers()
+        field_cotainer.pack(side="left")
+        self.add_control_buttons()
         self.update()
         
-    
+    def add_control_buttons(self):
+        container = tk.Frame(self.window)
+        dfsBtn = tk.Button(container, text="Solve using DFS", bg="#1e90ff", fg="#ffffff", command=self.field.dfs_solve)
+        dfsBtn.grid(row=0, column=0, pady=(0, 20))
+
+        backtrackBtn = tk.Button(container, text="Solve using Backtracking", bg="#1e90ff", fg="#ffffff")
+        backtrackBtn.grid(row=1, column=0, pady=(0, 20))
+
+        fwdCheck = tk.Button(container, text="Solve using Forward Checking", bg="#1e90ff", fg="#ffffff")
+        fwdCheck.grid(row = 2, column=0, pady=(0, 20), padx=20)
+
+        mainMenuBtn = tk.Button(container, text="Return to main menu", bg="#1e90ff", fg="#ffffff", command=self.main_menu)    
+        mainMenuBtn.grid(row = 3, column=0, pady=(0, 20))
+
+        container.pack(side="left")
+
     def set_tile(self, row, col, number):
         self.field.get_tile(row, col).set_number(number)
     
@@ -225,14 +254,48 @@ class ConsoleUI:
     def check_won(self):
         return self.field.is_won()
 
+    def main_menu(self):
+        self.clear_window()
+        title = tk.Text(self.window, height=1, width=50)
+        title.tag_configure("center", justify="center")
+        title.insert("1.0", "Vyberte level", "center")
+        title.pack(pady=10)
 
-file = open("levels\level1.json")
-levelData = json.load(file)
-file.close()
+        dir_list = os.listdir("levels")
+        level_names = filter(self.is_level_file, dir_list)
+        for name in level_names:
+            self.add_main_menu_btn(name)
+        self.show_window()
 
-ui = ConsoleUI(int(levelData['dimension']))
-ui.create_grid(levelData['tiles'])
+    def add_main_menu_btn(self, level_name):
+        levelBtn = tk.Button(self.window, text=level_name.split(".")[0], command=lambda: self.start_level(level_name))
+        levelBtn.pack(pady=10)
 
-ui.update()
-ui.show_window()
+    def is_level_file(self, file_name):
+        if(len(file_name.split(".")) == 1):
+            return False
+        name = file_name.split(".")[0]
+        ext = file_name.split(".")[1]
+        return ext == "json" and "level" in name
+
+    def start_level(self, level_name):
+        self.clear_window()
+        file = open(f"levels\{level_name}")
+        level_data = json.load(file)
+        file.close()
+
+        self.set_dimension(int(level_data['dimension']))
+        self.create_field()
+        self.create_grid(level_data['tiles'])
+
+    def clear_window(self):
+        for widget in self.window.winfo_children():
+            widget.destroy()
+
+ui = ConsoleUI()
+
+ui.main_menu()
+
+
+
 
