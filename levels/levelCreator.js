@@ -24,8 +24,11 @@ for(let row = 0; row < dimension; row++){
             console.log("zadali ste nespravne ohranicenie, povolene znaky su iba (u,r,d,l)")
             border = readLineSync.question(" ")
         }
-        let label = readLineSync.question("Zadajte label (ak label nema byt v danej bunke stlacte enter) ")
-        let newTile = {row, col, border, label}
+        let label = readLineSync.question("Zadajte label ((cislo a operand oddelene s medzerou) ak label nema byt v danej bunke stlacte enter) ")
+        let shadow_label = label
+        if(!label)
+             shadow_label = readLineSync.question("Zadajte label daneho sektoru (cislo a operand oddelene s medzerou) ")
+        let newTile = {row, col, border, label, shadow_label}
         resJson.tiles.push(newTile)
     }
 }
