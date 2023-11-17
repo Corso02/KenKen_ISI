@@ -126,9 +126,12 @@ class Field:
                 
         return resArr 
 
-    def dfs_solve(self):
-        print("Solving using DFS")
-        self.get_tile(0,0).canvas.create_text(50, 50, text="8")
+    def dfs_solve(self, func_to_update_window):
+        for i in range(3):
+            self.get_tile(0,0).canvas.create_text(50,50, text=str(i), tag="text")
+            func_to_update_window()
+            time.sleep(0.5)
+            self.get_tile(0,0).canvas.delete("text")
 
 class ConsoleUI:
     def __init__(self, grid_dimension = 0):
@@ -227,7 +230,7 @@ class ConsoleUI:
         
     def add_control_buttons(self):
         container = tk.Frame(self.window)
-        dfsBtn = tk.Button(container, text="Solve using DFS", bg="#1e90ff", fg="#ffffff", command=self.field.dfs_solve)
+        dfsBtn = tk.Button(container, text="Solve using DFS", bg="#1e90ff", fg="#ffffff", command=lambda: self.field.dfs_solve(self.update))
         dfsBtn.grid(row=0, column=0, pady=(0, 20))
 
         backtrackBtn = tk.Button(container, text="Solve using Backtracking", bg="#1e90ff", fg="#ffffff")
