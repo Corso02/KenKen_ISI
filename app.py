@@ -35,7 +35,8 @@ class Tile:
     def set_number(self, number):
         self.number = number
         if(self.canvas != None):
-            self.canvas.create_text(50, 45, text=str(number))
+            self.canvas.delete("number")
+            self.canvas.create_text(50, 45, text=str(number), tag="number")
     
     def set_canvas(self, canvas):
         self.canvas = canvas
@@ -50,6 +51,7 @@ class Tile:
             self.neighbours += "r"
         if("u" not in self.border):
             self.neighbours += "u"
+    
     def set_available_numbers(self, availableNumbers):
         self.availableNumbers = availableNumbers
 
@@ -126,12 +128,23 @@ class Field:
                 
         return resArr 
 
+    def set_all_tiles_to_zero(self):
+        for tileRow in self.tiles:
+            for tile in tileRow:
+                tile.set_number(0)
+    
     def dfs_solve(self, func_to_update_window):
+        self.set_all_tiles_to_zero()
+        func_to_update_window()
+        num = 1
         for i in range(3):
-            self.get_tile(0,0).canvas.create_text(50,50, text=str(i), tag="text")
-            func_to_update_window()
-            time.sleep(0.5)
-            self.get_tile(0,0).canvas.delete("text")
+            for tileRow in self.tiles:
+                for tile in tileRow:
+                    tile.set_number(num)
+                    func_to_update_window()
+                    time.sleep(0.2)
+            num += 1
+                
 
 class ConsoleUI:
     def __init__(self, grid_dimension = 0):
