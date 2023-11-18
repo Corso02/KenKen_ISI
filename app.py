@@ -15,6 +15,7 @@ class Tile:
         self.border = ""
         self.canvas = None
         self.availableNumbers = []
+        self.sector = []
     
     def get_label(self):
         return self.label
@@ -25,12 +26,32 @@ class Tile:
     def get_number(self):
         return self.number
 
+    def get_col(self):
+        return self.col
+    
+    def get_row(self):
+        return self.row
+
+    def get_border(self):
+        return self.border
+
+    def get_sector(self):
+        return self.sector
+
+    def get_shadow_label(self):
+        return self.shadow_label
+
+    def get_available_numbers(self):
+        return self.availableNumbers
+
     def set_label(self, label):
         self.label = label
 
+    def set_shadow_label(self, shadow_label):
+        self.shadow_label = shadow_label
+
     def set_border(self, border):
         self.border = border
-        self.set_neighbours()
     
     def set_number(self, number):
         self.number = number
@@ -40,18 +61,10 @@ class Tile:
     
     def set_canvas(self, canvas):
         self.canvas = canvas
-
-    def set_neighbours(self):
-        self.neighbours = ""
-        if("d" not in self.border):
-            self.neighbours += "d"
-        if("l" not in self.border):
-            self.neighbours += "l"
-        if("r" not in self.border):
-            self.neighbours += "r"
-        if("u" not in self.border):
-            self.neighbours += "u"
     
+    def set_sector(self, sector):
+        self.sector = sector
+
     def set_available_numbers(self, availableNumbers):
         self.availableNumbers = availableNumbers
 
@@ -94,6 +107,9 @@ class Field:
     def get_tile(self, row, col):
         return self.tiles[row][col]
 
+    def get_tiles(self):
+        return self.tiles
+
     def set_tile(self, row, col, label="", border="", number=-1, canvas=None, shadow_label=""):
         tileToUpdate = self.get_tile(row,col)
         if(len(label) != 0):
@@ -104,6 +120,8 @@ class Field:
             tileToUpdate.set_number(number)
         if(canvas != None):
             tileToUpdate.set_canvas(canvas)
+        if(len(shadow_label) != 0):
+            tileToUpdate.set_shadow_label(shadow_label)
     
     def is_won(self):
         for row in range(self.dimension):
@@ -133,17 +151,99 @@ class Field:
             for tile in tileRow:
                 tile.set_number(0)
     
+    def get_sector(self, tile):
+        visited = [[False for _ in range(self.dimension)] for _ in range(self.dimension)]
+        tile_row = tile.get_row()
+        tile_col = tile.get_col()
+        sector = self.find_tile_sector(tile_row, tile_col, visited)
+        self.get_tile(tile_row, tile_col).set_sector(sector)
+        
+    def find_tile_sector(self, tile_row, tile_col, visited):
+        stack = [(tile_row, tile_col)]
+        neighbours = []
+        while stack:
+            tile_row, tile_col = stack.pop()
+            visited[tile_row][tile_col] = True
+            neighbours.append((tile_row, tile_col))
+
+            tile_border = self.get_tile(tile_row, tile_col).get_border()
+            if "u" not in tile_border and tile_row != 0 and not visited[tile_row-1][tile_col]:
+                stack.append((tile_row - 1, tile_col))
+            if "l" not in tile_border and tile_col != 0 and not visited[tile_row][tile_col-1]:
+                stack.append((tile_row, tile_col - 1))
+            if "r" not in tile_border and tile_col != self.dimension - 1 and not visited[tile_row][tile_col + 1]:
+                stack.append((tile_row, tile_col + 1))
+            if "d" not in tile_border and tile_row != self.dimension - 1 and not visited[tile_row+1][tile_col]:
+                stack.append((tile_row + 1, tile_col))
+        
+        return neighbours
+    
+    def sector_is_filled(self, tile_row, tile_col):
+        sector_indexes = self.get_tile(tile_row, tile_col).get_sector()
+        for tile_cords in sector_indexes:
+            tile_row, tile_col = tile_cords
+            if self.get_tile(tile_row, tile_col).get_number() == 0:
+                return False
+        return True
+
+    def check_sector(self, tile_row, tile_col):
+        tile = self.get_tile(tile_row, tile_col)
+        sector_indexes = tile.get_sector()
+        label = tile.get_shadow_label()
+        print(label)
+
+        if len(label.split()) == 1:
+            required_number = int(tile.get_label())
+            return required_number == tile.get_number()
+
+        required_number = int(label.split()[0])
+        operand = label.split()[1]
+        numbers_in_tiles = []
+        for tile_cords in sector_indexes:
+            row, col = tile_cords
+            numbers_in_tiles.append(self.get_tile(row, col).get_number())
+        
+        numbers_in_tiles.sort()
+        availableNumbers = tile.get_available_numbers()
+        sortedAvailableNumbers = []
+        
+        for availableCombination in availableNumbers:
+            combo_list = list(availableCombination)
+            combo_list.sort()
+            sortedAvailableNumbers.append(combo_list)
+
+        return numbers_in_tiles in sortedAvailableNumbers
+    
+    def is_valid_pick(self, row, col, chosed_num):
+        # check row
+        for i in range(0, self.dimension):
+            if self.get_tile(row, i).get_number() == chosed_num:
+                return False
+
+        # check col
+        for i in range(0, self.dimension):
+            if self.get_tile(i, col).get_number() == chosed_num:
+                return False
+        
+        return True
+
     def dfs_solve(self, func_to_update_window):
         self.set_all_tiles_to_zero()
         func_to_update_window()
-        num = 1
-        for i in range(3):
-            for tileRow in self.tiles:
-                for tile in tileRow:
-                    tile.set_number(num)
-                    func_to_update_window()
-                    time.sleep(0.2)
-            num += 1
+
+        self.get_tile(0,1).set_number(2)
+        print("sektor zaplneny: ", self.sector_is_filled(0,1))
+        func_to_update_window()
+        time.sleep(0.5)
+        print("vyberam cislo 1. je to valid pick? ", self.is_valid_pick(0,2,1))
+        print("vyberam cislo 2. je to valid pick? ", self.is_valid_pick(0,2,2))
+        print("vyberam cislo 3. je to valid pick? ", self.is_valid_pick(0,2,3))
+        self.get_tile(0,2).set_number(3)
+        func_to_update_window()
+        print("sektro zaplneny: ", self.sector_is_filled(0,2))
+        time.sleep(0.5)
+
+        print("sektor vyplneny spravne: ", self.check_sector(0,2))
                 
 
 class ConsoleUI:
@@ -237,6 +337,11 @@ class ConsoleUI:
 
             self.field.get_tile(row,col).set_available_numbers(availableNumbersHashMap[tile['shadow_label']])
             #self.field.get_tile(row,col).show_available_numbers()
+        
+        for tileRow in self.field.get_tiles():
+            for tile in tileRow:
+                self.field.get_sector(tile)
+        
         field_cotainer.pack(side="left")
         self.add_control_buttons()
         self.update()
