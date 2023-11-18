@@ -130,6 +130,12 @@ class Field:
                 count += self.get_tile(row, col).get_number()
         if count != self.max_row_count:
             return False
+        
+        for tileRow in self.tiles:
+            for tile in tileRow:
+                if not self.check_sector(tile.get_row(), tile.get_col()):
+                    return False
+
         return True
     
     def is_unique(self, resArr, arrToAppend):
@@ -151,12 +157,27 @@ class Field:
             for tile in tileRow:
                 tile.set_number(0)
     
+    def find_all_available_numbers_for_sector(self, sector, tile_row, tile_col):
+        label = self.get_tile(tile_row, tile_col).get_shadow_label()
+        number = label.split()[0]
+        if len(label.split()) == 1:
+            operand = ""
+        else:
+            operand = label.split()[1]
+        
+        if operand == "":
+            self.get_tile(tile_row, tile_col).set_available_numbers([int(number)])
+        else:
+            self.get_tile(tile_row, tile_col).set_available_numbers(self.find_combination(num_of_numbers=len(sector), operand=operand, target=int(number)))
+        
+        
     def get_sector(self, tile):
         visited = [[False for _ in range(self.dimension)] for _ in range(self.dimension)]
         tile_row = tile.get_row()
         tile_col = tile.get_col()
         sector = self.find_tile_sector(tile_row, tile_col, visited)
         self.get_tile(tile_row, tile_col).set_sector(sector)
+        self.find_all_available_numbers_for_sector(sector, tile_row, tile_col)
         
     def find_tile_sector(self, tile_row, tile_col, visited):
         stack = [(tile_row, tile_col)]
@@ -190,7 +211,6 @@ class Field:
         tile = self.get_tile(tile_row, tile_col)
         sector_indexes = tile.get_sector()
         label = tile.get_shadow_label()
-        print(label)
 
         if len(label.split()) == 1:
             required_number = int(tile.get_label())
@@ -225,26 +245,50 @@ class Field:
             if self.get_tile(i, col).get_number() == chosed_num:
                 return False
         
-        return True
+        # OPTIMALIZACIA: skusat budem iba validne cisla pre dany sektor
+        all_available_numbers_for_sector = self.get_tile(row, col).get_available_numbers()
+        if len(all_available_numbers_for_sector) == 1 and type(all_available_numbers_for_sector[0]) is not tuple:
+            return True
 
-    def dfs_solve(self, func_to_update_window):
+        for one_combination in all_available_numbers_for_sector:
+            list_comb = list(one_combination)
+            if(chosed_num in list_comb):
+                return True
+        return False
+
+        # KONIEC OPTIMALIZACIE
+        #return True
+
+    def dfs_solve_helper(self, func_to_update_window):
+        start_time = time.time()
         self.set_all_tiles_to_zero()
         func_to_update_window()
+        solved = self.dfs(0,0,func_to_update_window)
+        print("Vyriesene: ", solved)
+        end_time = time.time()
+        print("Dlzka: ", end_time - start_time)
 
-        self.get_tile(0,1).set_number(2)
-        print("sektor zaplneny: ", self.sector_is_filled(0,1))
-        func_to_update_window()
-        time.sleep(0.5)
-        print("vyberam cislo 1. je to valid pick? ", self.is_valid_pick(0,2,1))
-        print("vyberam cislo 2. je to valid pick? ", self.is_valid_pick(0,2,2))
-        print("vyberam cislo 3. je to valid pick? ", self.is_valid_pick(0,2,3))
-        self.get_tile(0,2).set_number(3)
-        func_to_update_window()
-        print("sektro zaplneny: ", self.sector_is_filled(0,2))
-        time.sleep(0.5)
+    def dfs(self, row, col, update_window):
+        if(self.is_won()):
+            return True
+        
+        next_col = 0 if col == self.dimension - 1 else col + 1
+        next_row = row if next_col != 0 else row + 1
+        solve_next = True if (next_col < self.dimension and next_row < self.dimension) else False
 
-        print("sektor vyplneny spravne: ", self.check_sector(0,2))
-                
+        for num_to_add in range(1, self.dimension + 1):
+            if(self.is_valid_pick(row,col,num_to_add)):
+                self.get_tile(row, col).set_number(num_to_add)
+                update_window()
+                #time.sleep(0.1)
+                if(self.is_won()):
+                    return True
+                if(solve_next and self.dfs(next_row, next_col, update_window)):
+                    return True
+                self.get_tile(row, col).set_number(0)
+                update_window()
+        
+        return False
 
 class ConsoleUI:
     def __init__(self, grid_dimension = 0):
@@ -301,26 +345,28 @@ class ConsoleUI:
         field_cotainer = tk.Frame(self.window)
         hashmap = {}
 
-        for tile in tilesData:
-            if(tile['shadow_label'] in hashmap):
-                hashmap[tile['shadow_label']] += 1
-            else:
-                hashmap[tile['shadow_label']] = 1
-        
-        availableNumbersHashMap = {}
-        
-        for label,count in hashmap.items():
-            if(len(label.split())==1):
-                number = label.split()[0]
-                operand = ""
-            else:
-                number = label.split()[0]
-                operand = label.split()[1]
-            if(operand == ""):
-                availableNumbersHashMap[label] = [number]
-            else:
-                availableNumbersHashMap[label] = self.field.find_combination(num_of_numbers=int(count), operand=operand, target=int(number))
-        
+        #for tile in tilesData:
+        #    if(tile['shadow_label'] in hashmap):
+        #        hashmap[tile['shadow_label']] += 1
+        #    else:
+        #        hashmap[tile['shadow_label']] = 1
+        #
+        #availableNumbersHashMap = {}
+        #
+        #for label,count in hashmap.items():
+        #    if(len(label.split())==1):
+        #        number = label.split()[0]
+        #        operand = ""
+        #    else:
+        #        number = label.split()[0]
+        #        operand = label.split()[1]
+        #    if(operand == ""):
+        #        availableNumbersHashMap[label] = [number]
+        #    else:
+        #        print(label, count)
+        #        availableNumbersHashMap[label] = self.field.find_combination(num_of_numbers=int(count), operand=operand, target=int(number))
+    
+
         for tile in tilesData:
             row = int(tile['row'])
             col = int(tile['col'])
@@ -335,7 +381,7 @@ class ConsoleUI:
             
             self.field.set_tile(row,col,tile['label'],tile['border'], canvas=canvas, shadow_label=tile['shadow_label'])
 
-            self.field.get_tile(row,col).set_available_numbers(availableNumbersHashMap[tile['shadow_label']])
+            #self.field.get_tile(row,col).set_available_numbers(availableNumbersHashMap[tile['shadow_label']])
             #self.field.get_tile(row,col).show_available_numbers()
         
         for tileRow in self.field.get_tiles():
@@ -348,7 +394,7 @@ class ConsoleUI:
         
     def add_control_buttons(self):
         container = tk.Frame(self.window)
-        dfsBtn = tk.Button(container, text="Solve using DFS", bg="#1e90ff", fg="#ffffff", command=lambda: self.field.dfs_solve(self.update))
+        dfsBtn = tk.Button(container, text="Solve using DFS", bg="#1e90ff", fg="#ffffff", command=lambda: self.field.dfs_solve_helper(self.update))
         dfsBtn.grid(row=0, column=0, pady=(0, 20))
 
         backtrackBtn = tk.Button(container, text="Solve using Backtracking", bg="#1e90ff", fg="#ffffff")
