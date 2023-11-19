@@ -329,13 +329,6 @@ class Field:
         for i in range(self.dimension):
             if self.get_tile(row, i).get_number() == chosen_num or self.get_tile(i, col).get_number() == chosen_num:
                 return False
-        
-        sector_indexes = self.get_tile(row, col).get_sector()
-        for tile_cords in sector_indexes:
-            tile_row, tile_col = tile_cords
-            if self.get_tile(tile_row, tile_col).get_number() == chosen_num:
-                return False
-
         return True
 
     def forward_checking(self, row, col, update_window):
