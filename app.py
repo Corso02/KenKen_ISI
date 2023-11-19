@@ -98,6 +98,7 @@ class Field:
         self.max_row_count = 0 # pouzite pre kontrolu ci su cisla v riadku spravne (ci sa neopakuju)
         self.tiles = [0] * dimension 
         self.availableNumbersToChoose = [0] * dimension
+        self.dfs_visited_tiles_count = 0
         for row in range(dimension):
             self.availableNumbersToChoose[row] = row + 1
             self.max_row_count += (row + 1)
@@ -266,9 +267,10 @@ class Field:
         self.set_all_tiles_to_zero()
         func_to_update_window()
         solved = self.dfs(0,0,func_to_update_window)
-        print("Vyriesene: ", solved)
+        print("DFS Vyriesene: ", solved)
         end_time = time.time()
-        print("Dlzka: ", end_time - start_time)
+        print("DFS cas na vyriesenie: ", end_time - start_time)
+        print("DFS pocet navstivenych policok: ", self.dfs_visited_tiles_count)
 
     def dfs(self, row, col, update_window):
         if(self.is_won()):
@@ -281,6 +283,7 @@ class Field:
         for num_to_add in range(1, self.dimension + 1):
             if(self.is_valid_pick(row,col,num_to_add)):
                 self.get_tile(row, col).set_number(num_to_add)
+                self.dfs_visited_tiles_count += 1
                 update_window()
                 #time.sleep(0.1)
                 if(self.is_won()):
