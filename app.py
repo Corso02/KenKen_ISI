@@ -99,6 +99,7 @@ class Field:
         self.tiles = [0] * dimension 
         self.availableNumbersToChoose = [0] * dimension
         self.dfs_visited_tiles_count = 0
+        self.fwd_visited_tiles_count = 0
         for row in range(dimension):
             self.availableNumbersToChoose[row] = row + 1
             self.max_row_count += (row + 1)
@@ -324,24 +325,20 @@ class Field:
                 update_window()
 
         return False
-    
-    def forward_checking_helper(self, row, col, chosen_num):
-        for i in range(self.dimension):
-            if self.get_tile(row, i).get_number() == chosen_num or self.get_tile(i, col).get_number() == chosen_num:
-                return False
-        return True
 
     def forward_checking(self, row, col, update_window):
         if self.is_won():
             return True
+        # pridat counter na navstivene policka
 
         next_col = 0 if col == self.dimension - 1 else col + 1
         next_row = row if next_col != 0 else row + 1
         solve_next = True if (next_col < self.dimension and next_row < self.dimension) else False
 
         for num_to_add in range(1, self.dimension + 1):
-            if self.is_valid_pick(row, col, num_to_add) and self.forward_checking_helper(row, col, num_to_add):
+            if self.is_valid_pick(row, col, num_to_add) and self.forward_check_pick(row, col, update_window):
                 self.get_tile(row, col).set_number(num_to_add)
+                self.fwd_visited_tiles_count += 1
                 update_window()
                 if self.is_won():
                     return True
@@ -349,6 +346,7 @@ class Field:
                     return True
                 self.get_tile(row, col).set_number(0)
                 update_window()
+
 
         return False
 
@@ -360,6 +358,52 @@ class Field:
         print("Vyriesene: ", solved)
         end_time = time.time()
         print("Dlzka: ", end_time - start_time)
+        print("FWD pocet navstivenych policok: ", self.fwd_visited_tiles_count)
+        self.fwd_visited_tiles_count = 0
+    
+    def forward_check_pick(self, row, col, update_window):
+        assigned_numbers_row = []
+        for i in range(col):
+            tile = self.get_tile(row, i)
+            assigned_numbers_row.append(tile.get_number())
+
+        tile = self.get_tile(row, col)
+        available_numbers = tile.get_available_numbers()
+        available_numbers = [num for num in available_numbers if num not in assigned_numbers_row]
+
+        if not available_numbers:
+            return False
+
+        assigned_numbers_col = []
+        for i in range(row):
+            tile = self.get_tile(i, col)
+            assigned_numbers_col.append(tile.get_number())
+
+        available_numbers = [num for num in available_numbers if num not in assigned_numbers_col]
+
+        if not available_numbers:
+            return False
+
+        for i in range(col + 1, self.dimension):
+            tile = self.get_tile(row, i)
+            available_numbers_tile = tile.get_available_numbers()
+            available_numbers_tile = [num for num in available_numbers_tile if num not in assigned_numbers_row]
+            if not available_numbers_tile:
+                return False
+
+        for i in range(row + 1, self.dimension):
+            tile = self.get_tile(i, col)
+            available_numbers_tile = tile.get_available_numbers()
+            available_numbers_tile = [num for num in available_numbers_tile if num not in assigned_numbers_col]
+            if not available_numbers_tile:
+                return False
+
+        return True
+
+
+
+
+
 
 class ConsoleUI:
     def __init__(self, grid_dimension = 0):
