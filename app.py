@@ -16,6 +16,8 @@ class Tile:
         self.canvas = None
         self.availableNumbers = []
         self.sector = []
+        self.sector_len = 0
+        self.availableNumbersBeforeRemoval = []
     
     def get_label(self):
         return self.label
@@ -37,6 +39,9 @@ class Tile:
 
     def get_sector(self):
         return self.sector
+
+    def get_sector_len(self):
+        return self.sector_len
 
     def get_shadow_label(self):
         return self.shadow_label
@@ -64,31 +69,48 @@ class Tile:
     
     def set_sector(self, sector):
         self.sector = sector
-
+        self.sector_len = len(sector)
+    
     def set_available_numbers(self, availableNumbers):
         self.availableNumbers = availableNumbers
+        self.availableNumbersBeforeRemoval = [[]]
+
+        set_idx = 0
+        for one_set in availableNumbers:
+            self.availableNumbersBeforeRemoval.append([])
+            for num in one_set:
+                self.availableNumbersBeforeRemoval[set_idx].append(num)
+            set_idx += 1
 
     def show_available_numbers(self):
-        print(self.availableNumbers)
-        if len(self.availableNumbers) == 1:
+        self.canvas.delete("numbers")
+        optionIdx = 0
+        for options in self.availableNumbers:
             idx = 0
-            for option in self.availableNumbers:
-                if(idx == len(self.availableNumbers) - 1):
-                    self.canvas.create_text(40 + (10*idx), 80, text=f"{option}")
+            for option in options:
+                if(idx == len(options) - 1):
+                    self.canvas.create_text(40 + (10*idx), 65 + (10*optionIdx), text=f"{option}", tag="numbers")
                 else:
-                    self.canvas.create_text(40 + (10*idx), 80, text=f"{option},")
+                    self.canvas.create_text(40 + (10*idx), 65 + (10*optionIdx), text=f"{option},", tag="numbers")
                 idx += 1
-        else:
-            optionIdx = 0
-            for options in self.availableNumbers:
-                idx = 0
-                for option in options:
-                    if(idx == len(options) - 1):
-                        self.canvas.create_text(40 + (10*idx), 50 + (10*optionIdx), text=f"{option}")
-                    else:
-                        self.canvas.create_text(40 + (10*idx), 50 + (10*optionIdx), text=f"{option},")
-                    idx += 1
-                optionIdx += 1
+            optionIdx += 1
+
+    def remove_number_from_available_numbers(self, num_to_remove):
+        for one_set in self.availableNumbers:
+            while num_to_remove in one_set:
+                one_set.remove(num_to_remove)
+    
+    def add_number_to_available_numbers(self, num_to_add):
+       # print(f"Pre ({self.row}, {self.col}) doplnam {num_to_add}")
+        for idx in range(len(self.availableNumbers)):
+        #    print(f"kontrolujem kombinacie {idx} {len(self.availableNumbers[idx]) != len(self.availableNumbersBeforeRemoval[idx])} {num_to_add not in self.availableNumbers[idx]}")
+         #   print(f"{self.availableNumbers[idx]}, {self.availableNumbersBeforeRemoval[idx]}")
+
+            if len(self.availableNumbers[idx]) != len(self.availableNumbersBeforeRemoval[idx]) and num_to_add not in self.availableNumbers[idx]:
+          #      print(f"cislo {num_to_add} musim doplnit { self.availableNumbersBeforeRemoval[idx].count(num_to_add)} krat")
+                while(self.availableNumbers[idx].count(num_to_add) != self.availableNumbersBeforeRemoval[idx].count(num_to_add)):
+                    self.availableNumbers[idx].append(num_to_add)
+           # print("--------------------------------------------------------------------------")
 
 class Field:
     def __init__(self, dimension):
@@ -97,6 +119,7 @@ class Field:
         self.tiles = [0] * dimension 
         self.availableNumbersToChoose = [0] * dimension
         self.dfs_visited_tiles_count = 0
+        self.fwd_visited_tiles_count = 0
         for row in range(dimension):
             self.availableNumbersToChoose[row] = row + 1
             self.max_row_count += (row + 1)
@@ -124,6 +147,11 @@ class Field:
         if(len(shadow_label) != 0):
             tileToUpdate.set_shadow_label(shadow_label)
     
+    def show_available_numbers_all_tiles(self):
+        for tileRow in self.tiles:
+            for tile in tileRow:
+                tile.show_available_numbers()
+
     def is_won(self):
         for row in range(self.dimension):
             count = 0
@@ -131,6 +159,13 @@ class Field:
                 count += self.get_tile(row, col).get_number()
         if count != self.max_row_count:
             return False
+
+        for tile_row in self.tiles:
+            row_nums = set()
+            for tile in tile_row:
+                row_nums.add(tile.get_number())
+            if len(row_nums) != self.dimension:
+                return False
         
         for tileRow in self.tiles:
             for tile in tileRow:
@@ -145,12 +180,15 @@ class Field:
         return resArr.count(sortedArr) == 0
 
     def find_combination(self, target, num_of_numbers, operand):
-        resArr = []
+        resTuples = []
         for combination in itertools.product(self.availableNumbersToChoose, repeat=num_of_numbers):
             sorted_comb = tuple(sorted(combination))
-            if target == eval(operand.join(map(str, combination))) and sorted_comb not in resArr:
-                resArr.append(sorted_comb) 
-                
+            if target == eval(operand.join(map(str, combination))) and sorted_comb not in resTuples:
+                resTuples.append(sorted_comb)
+        
+        resArr = []
+        for arr in resTuples:
+            resArr.append(list(arr))
         return resArr 
 
     def set_all_tiles_to_zero(self):
@@ -167,10 +205,9 @@ class Field:
             operand = label.split()[1]
         
         if operand == "":
-            self.get_tile(tile_row, tile_col).set_available_numbers([int(number)])
+            self.get_tile(tile_row, tile_col).set_available_numbers([[int(number)]])
         else:
             self.get_tile(tile_row, tile_col).set_available_numbers(self.find_combination(num_of_numbers=len(sector), operand=operand, target=int(number)))
-        
         
     def get_sector(self, tile):
         visited = [[False for _ in range(self.dimension)] for _ in range(self.dimension)]
@@ -236,39 +273,55 @@ class Field:
         return numbers_in_tiles in sortedAvailableNumbers
     
     def is_valid_pick(self, row, col, chosed_num):
-        # check row
+        # check row and col
         for i in range(0, self.dimension):
-            if self.get_tile(row, i).get_number() == chosed_num:
+            if self.get_tile(row, i).get_number() == chosed_num or self.get_tile(i, col).get_number() == chosed_num:
                 return False
+        return True
 
-        # check col
-        for i in range(0, self.dimension):
-            if self.get_tile(i, col).get_number() == chosed_num:
-                return False
-        
-        # OPTIMALIZACIA: skusat budem iba validne cisla pre dany sektor
-        all_available_numbers_for_sector = self.get_tile(row, col).get_available_numbers()
-        if len(all_available_numbers_for_sector) == 1 and type(all_available_numbers_for_sector[0]) is not tuple:
+    def backtracking_solve_helper(self, func_to_update_window):
+        start_time = time.time()
+        self.set_all_tiles_to_zero()
+        func_to_update_window()
+        self.backtracking_visited_tiles_count = 0
+        solved = self.backtracking(0,0,func_to_update_window)
+        print("backtracking Vyriesene: ", solved)
+        end_time = time.time()
+        print("backtracking cas na vyriesenie: ", end_time - start_time)
+        print("backtracking pocet navstivenych policok: ", self.backtracking_visited_tiles_count)
+
+    def backtracking(self, row, col, update_window):
+        if(self.is_won()):
             return True
+        
+        next_col = 0 if col == self.dimension - 1 else col + 1
+        next_row = row if next_col != 0 else row + 1
+        solve_next = True if (next_col < self.dimension and next_row < self.dimension) else False
 
-        for one_combination in all_available_numbers_for_sector:
-            list_comb = list(one_combination)
-            if(chosed_num in list_comb):
-                return True
+        self.backtracking_visited_tiles_count += 1
+        for num_to_add in range(1, self.dimension + 1):
+            if(self.is_valid_pick(row,col,num_to_add)):
+                self.get_tile(row, col).set_number(num_to_add)
+                update_window()
+                if(self.is_won()):
+                    return True
+                if(solve_next and self.backtracking(next_row, next_col, update_window)):
+                    return True
+                self.get_tile(row, col).set_number(0)
+                update_window()
+        
         return False
-
-        # KONIEC OPTIMALIZACIE
-        #return True
 
     def dfs_solve_helper(self, func_to_update_window):
         start_time = time.time()
         self.set_all_tiles_to_zero()
         func_to_update_window()
+        self.dfs_visited_tiles_count = 0
         solved = self.dfs(0,0,func_to_update_window)
-        print("DFS Vyriesene: ", solved)
+        print("dfs Vyriesene: ", solved)
         end_time = time.time()
-        print("DFS cas na vyriesenie: ", end_time - start_time)
-        print("DFS pocet navstivenych policok: ", self.dfs_visited_tiles_count)
+        print("dfs cas na vyriesenie: ", end_time - start_time)
+        print("dfs pocet navstivenych policok: ", self.dfs_visited_tiles_count)
 
     def dfs(self, row, col, update_window):
         if(self.is_won()):
@@ -278,20 +331,102 @@ class Field:
         next_row = row if next_col != 0 else row + 1
         solve_next = True if (next_col < self.dimension and next_row < self.dimension) else False
 
+        self.dfs_visited_tiles_count += 1  
         for num_to_add in range(1, self.dimension + 1):
-            if(self.is_valid_pick(row,col,num_to_add)):
-                self.get_tile(row, col).set_number(num_to_add)
-                self.dfs_visited_tiles_count += 1
+            self.get_tile(row, col).set_number(num_to_add)
+           
+            update_window()
+            if(self.is_won()):
+                return True
+            if(solve_next and self.dfs(next_row, next_col, update_window)):
+                return True
+            self.get_tile(row, col).set_number(0)
+            update_window()
+        
+        return False
+
+    def forward_checking(self, row, col, update_window):
+        if self.is_won():
+            return True
+        # pridat counter na navstivene policka
+
+        next_col = 0 if col == self.dimension - 1 else col + 1
+        next_row = row if next_col != 0 else row + 1
+        solve_next = True if (next_col < self.dimension and next_row < self.dimension) else False
+        self.fwd_visited_tiles_count += 1
+
+        for num_to_add in range(1, self.dimension + 1):
+            if self.is_valid_pick(row, col, num_to_add) and self.forward_check_pick(row, col, num_to_add, update_window):
+                self.get_tile(row, col).set_number(num_to_add)    
                 update_window()
-                #time.sleep(0.1)
-                if(self.is_won()):
+                if self.is_won():
                     return True
-                if(solve_next and self.dfs(next_row, next_col, update_window)):
+                if solve_next and self.forward_checking(next_row, next_col, update_window):
                     return True
                 self.get_tile(row, col).set_number(0)
                 update_window()
-        
+
+
         return False
+
+    def forward_checking_solve_helper(self, func_to_update_window):
+        start_time = time.time()
+        self.set_all_tiles_to_zero()
+        func_to_update_window()
+        solved = self.forward_checking(0, 0, func_to_update_window)
+        print("Vyriesene: ", solved)
+        end_time = time.time()
+        print("Dlzka: ", end_time - start_time)
+        print("FWD pocet navstivenych policok: ", self.fwd_visited_tiles_count)
+        self.fwd_visited_tiles_count = 0
+    
+    def forward_check_pick(self, row, col, num_to_assign, update_window):
+
+        #check if the num we want to assign is legal for given tile
+        available_numbers_tile = self.get_tile(row, col).get_available_numbers()
+        available = False
+        for sub_list in available_numbers_tile:
+            if(num_to_assign in sub_list):
+                available = True
+                break
+        
+        if not available: return False
+
+        # get all assigned numbers from given row
+        assigned_numbers_row = [num_to_assign]
+        for i in range(col):
+            tile = self.get_tile(row, i)
+            assigned_numbers_row.append(tile.get_number())
+
+        # check if there would be conflicts in given row
+        for i in range(col + 1, self.dimension):
+            tile = self.get_tile(row, i)
+            # get all numbers in col before tile we are checking
+            nums_to_check = assigned_numbers_row.copy()
+            for j in range(0, row):
+                tile_in_col = self.get_tile(j, i)
+                nums_to_check.append(tile_in_col.get_number())
+            available_numbers_tile = tile.get_available_numbers()
+            check = [num for sub_list in available_numbers_tile for num in sub_list if num not in nums_to_check]
+            if not check:
+                return False
+        
+
+        assigned_numbers_col = [num_to_assign]
+        for i in range(row):
+            tile = self.get_tile(i, col)
+            assigned_numbers_col.append(tile.get_number())
+
+        # check fo conflicts in col of the tile we want to assign number to
+        for i in range(row + 1, self.dimension):
+            tile = self.get_tile(i, col)
+            available_numbers_tile = tile.get_available_numbers()
+            available_numbers_tile = [num for sub_list in available_numbers_tile for num in sub_list if num not in assigned_numbers_col]
+            if not available_numbers_tile:
+                return False
+
+        # number we eant to assign is legal and doesnt create any conflicts
+        return True
 
 class ConsoleUI:
     def __init__(self, grid_dimension = 0):
@@ -348,28 +483,6 @@ class ConsoleUI:
         field_cotainer = tk.Frame(self.window)
         hashmap = {}
 
-        #for tile in tilesData:
-        #    if(tile['shadow_label'] in hashmap):
-        #        hashmap[tile['shadow_label']] += 1
-        #    else:
-        #        hashmap[tile['shadow_label']] = 1
-        #
-        #availableNumbersHashMap = {}
-        #
-        #for label,count in hashmap.items():
-        #    if(len(label.split())==1):
-        #        number = label.split()[0]
-        #        operand = ""
-        #    else:
-        #        number = label.split()[0]
-        #        operand = label.split()[1]
-        #    if(operand == ""):
-        #        availableNumbersHashMap[label] = [number]
-        #    else:
-        #        print(label, count)
-        #        availableNumbersHashMap[label] = self.field.find_combination(num_of_numbers=int(count), operand=operand, target=int(number))
-    
-
         for tile in tilesData:
             row = int(tile['row'])
             col = int(tile['col'])
@@ -390,6 +503,7 @@ class ConsoleUI:
         for tileRow in self.field.get_tiles():
             for tile in tileRow:
                 self.field.get_sector(tile)
+                tile.show_available_numbers()
         
         field_cotainer.pack(side="left")
         self.add_control_buttons()
@@ -400,10 +514,10 @@ class ConsoleUI:
         dfsBtn = tk.Button(container, text="Solve using DFS", bg="#1e90ff", fg="#ffffff", command=lambda: self.field.dfs_solve_helper(self.update))
         dfsBtn.grid(row=0, column=0, pady=(0, 20))
 
-        backtrackBtn = tk.Button(container, text="Solve using Backtracking", bg="#1e90ff", fg="#ffffff")
+        backtrackBtn = tk.Button(container, text="Solve using Backtracking", bg="#1e90ff", fg="#ffffff", command=lambda: self.field.backtracking_solve_helper(self.update))
         backtrackBtn.grid(row=1, column=0, pady=(0, 20))
 
-        fwdCheck = tk.Button(container, text="Solve using Forward Checking", bg="#1e90ff", fg="#ffffff")
+        fwdCheck = tk.Button(container, text="Solve using Forward Checking", bg="#1e90ff", fg="#ffffff", command=lambda: self.field.forward_checking_solve_helper(self.update))
         fwdCheck.grid(row = 2, column=0, pady=(0, 20), padx=20)
 
         mainMenuBtn = tk.Button(container, text="Return to main menu", bg="#1e90ff", fg="#ffffff", command=self.main_menu)    
