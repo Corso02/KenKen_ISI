@@ -279,16 +279,16 @@ class Field:
                 return False
         return True
 
-    def backtracking_solve_helper(self, func_to_update_window):
+    def backtracking_solve_helper(self, func_to_update_window, func_to_add_results):
         start_time = time.time()
         self.set_all_tiles_to_zero()
         func_to_update_window()
         self.backtracking_visited_tiles_count = 0
         solved = self.backtracking(0,0,func_to_update_window)
-        print("backtracking Vyriesene: ", solved)
         end_time = time.time()
-        print("backtracking cas na vyriesenie: ", end_time - start_time)
-        print("backtracking pocet navstivenych policok: ", self.backtracking_visited_tiles_count)
+        solve_time = end_time - start_time
+        func_to_add_results("Backtracking", self.backtracking_visited_tiles_count, solve_time, solved, 1)
+        func_to_update_window()
 
     def backtracking(self, row, col, update_window):
         if(self.is_won()):
@@ -312,17 +312,17 @@ class Field:
         
         return False
 
-    def dfs_solve_helper(self, func_to_update_window):
+    def dfs_solve_helper(self, func_to_update_window, func_to_add_results):
         start_time = time.time()
         self.set_all_tiles_to_zero()
         func_to_update_window()
         self.dfs_visited_tiles_count = 0
         solved = self.dfs(0,0,func_to_update_window)
-        print("dfs Vyriesene: ", solved)
         end_time = time.time()
-        print("dfs cas na vyriesenie: ", end_time - start_time)
-        print("dfs pocet navstivenych policok: ", self.dfs_visited_tiles_count)
-
+        solve_time = end_time - start_time
+        func_to_add_results("DFS", self.dfs_visited_tiles_count, solve_time, solved, 0)
+        func_to_update_window()
+        
     def dfs(self, row, col, update_window):
         if(self.is_won()):
             return True
@@ -369,17 +369,17 @@ class Field:
 
         return False
 
-    def forward_checking_solve_helper(self, func_to_update_window):
+    def forward_checking_solve_helper(self, func_to_update_window, func_to_add_results):
         start_time = time.time()
         self.set_all_tiles_to_zero()
         func_to_update_window()
-        solved = self.forward_checking(0, 0, func_to_update_window)
-        print("Vyriesene: ", solved)
-        end_time = time.time()
-        print("Dlzka: ", end_time - start_time)
-        print("FWD pocet navstivenych policok: ", self.fwd_visited_tiles_count)
         self.fwd_visited_tiles_count = 0
-    
+        solved = self.forward_checking(0, 0, func_to_update_window)
+        end_time = time.time()
+        solve_time = end_time - start_time
+        func_to_add_results("Forward check", self.fwd_visited_tiles_count, solve_time, solved, 2)
+        func_to_update_window()
+            
     def forward_check_pick(self, row, col, num_to_assign, update_window):
 
         #check if the num we want to assign is legal for given tile
@@ -496,34 +496,32 @@ class ConsoleUI:
                 canvas.create_text(20,10, text=tile['label'])
             
             self.field.set_tile(row,col,tile['label'],tile['border'], canvas=canvas, shadow_label=tile['shadow_label'])
-
-            #self.field.get_tile(row,col).set_available_numbers(availableNumbersHashMap[tile['shadow_label']])
-            #self.field.get_tile(row,col).show_available_numbers()
         
         for tileRow in self.field.get_tiles():
             for tile in tileRow:
                 self.field.get_sector(tile)
-                tile.show_available_numbers()
+                #tile.show_available_numbers()
         
-        field_cotainer.pack(side="left")
+        field_cotainer.grid(row = 0, column=0, columnspan=1)
         self.add_control_buttons()
+        self.add_text_container()
         self.update()
         
     def add_control_buttons(self):
         container = tk.Frame(self.window)
-        dfsBtn = tk.Button(container, text="Solve using DFS", bg="#1e90ff", fg="#ffffff", command=lambda: self.field.dfs_solve_helper(self.update))
+        dfsBtn = tk.Button(container, text="Solve using DFS", bg="#1e90ff", fg="#ffffff", command=lambda: self.field.dfs_solve_helper(self.update, self.add_text_res))
         dfsBtn.grid(row=0, column=0, pady=(0, 20))
 
-        backtrackBtn = tk.Button(container, text="Solve using Backtracking", bg="#1e90ff", fg="#ffffff", command=lambda: self.field.backtracking_solve_helper(self.update))
+        backtrackBtn = tk.Button(container, text="Solve using Backtracking", bg="#1e90ff", fg="#ffffff", command=lambda: self.field.backtracking_solve_helper(self.update, self.add_text_res))
         backtrackBtn.grid(row=1, column=0, pady=(0, 20))
 
-        fwdCheck = tk.Button(container, text="Solve using Forward Checking", bg="#1e90ff", fg="#ffffff", command=lambda: self.field.forward_checking_solve_helper(self.update))
+        fwdCheck = tk.Button(container, text="Solve using Forward Checking", bg="#1e90ff", fg="#ffffff", command=lambda: self.field.forward_checking_solve_helper(self.update, self.add_text_res))
         fwdCheck.grid(row = 2, column=0, pady=(0, 20), padx=20)
 
         mainMenuBtn = tk.Button(container, text="Return to main menu", bg="#1e90ff", fg="#ffffff", command=self.main_menu)    
         mainMenuBtn.grid(row = 3, column=0, pady=(0, 20))
 
-        container.pack(side="left")
+        container.grid(row = 0, column=1, columnspan=1)
 
     def set_tile(self, row, col, number):
         self.field.get_tile(row, col).set_number(number)
@@ -575,6 +573,52 @@ class ConsoleUI:
     def clear_window(self):
         for widget in self.window.winfo_children():
             widget.destroy()
+
+    def add_text_container(self):
+        self.text_container = tk.Frame(self.window)
+        self.text_container.grid(row=1, column=0, columnspan=2)
+
+    def add_text_res(self, name, count, time, solved, col):
+        default_bg = self.window.cget("bg")
+        default_relief = "flat"
+        container = tk.Frame(self.text_container)
+        window_width = self.window.winfo_width()//10
+
+
+        divider = tk.Text(container, width=window_width, height=1, bg=default_bg, relief=default_relief)
+        divider.tag_configure("center", justify="center")
+        divider.insert("1.0", f"{'-'*window_width}", "center")
+        divider.grid(row=0, column=0)
+        divider.config(state="disabled")
+            
+        name_widget = tk.Text(container, width=40, height=1, bg=default_bg, relief=default_relief)
+        name_widget.tag_configure("center", justify="center")
+        name_widget.insert("1.0", name, "center")
+        name_widget.grid(row=1, column=0)
+        name_widget.config(state="disabled")
+
+        solved_widget = tk.Text(container, width=40, height=1, bg=default_bg, relief=default_relief)
+        solved_widget.tag_configure("left", justify="left")
+        solved_widget.insert("1.0", f"Vyriešené: {solved}", "left")
+        solved_widget.grid(row=2, column=0)
+        solved_widget.config(state="disabled")
+
+        count_widget = tk.Text(container, width=40, height=1, bg=default_bg, relief=default_relief)
+        count_widget.tag_configure("left", justify="left")
+        count_widget.insert("1.0", f"Navštívené políčka: {count}", "left")
+        count_widget.grid(row=3, column=0)
+        count_widget.config(state="disabled")
+
+        time_widget = tk.Text(container, width=40, height=1, bg=default_bg, relief=default_relief)
+        time_widget.tag_configure("left", justify="left")
+        time_widget.insert("1.0", f"Čas: {time}", "left")
+        time_widget.grid(row=4, column=0)
+        time_widget.config(state="disabled")
+
+        container.grid(row=col, column=0, padx=10)
+        
+       
+
 
 ui = ConsoleUI()
 
