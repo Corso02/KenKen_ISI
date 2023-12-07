@@ -160,7 +160,6 @@ class Field:
         if count != self.max_row_count:
             return False
         
-        print("sucet dajaky je ok")
 
         for tile_row in self.tiles:
             row_nums = set()
@@ -169,19 +168,16 @@ class Field:
             if len(row_nums) != self.dimension:
                 return False
         
-        print("jedinecne cisla v kazdom riadku ok")
         
         for col in range(len(self.tiles)):
             col_data = set([row[col].get_number() for row in self.tiles])
             if(len(col_data) != self.dimension):
                 return False
 
-        print("jedinecne cisla v stlpci ok")   
         
         for tileRow in self.tiles:
             for tile in tileRow:
                 if not self.check_sector(tile.get_row(), tile.get_col()):
-                    print(f"chujovy sektor {tile.get_row()}, {tile.get_col()}")
                     return False
 
         return True
@@ -224,29 +220,31 @@ class Field:
             self.get_tile(tile_row, tile_col).set_available_numbers(self.find_combination(num_of_numbers=len(sector), operand=operand, target=int(number)))
         
     def get_sector(self, tile):
-        visited = [[False for _ in range(self.dimension)] for _ in range(self.dimension)]
         tile_row = tile.get_row()
         tile_col = tile.get_col()
-        sector = self.find_tile_sector(tile_row, tile_col, visited)
+        sector = self.find_tile_sector(tile_row, tile_col)
         self.get_tile(tile_row, tile_col).set_sector(sector)
         self.find_all_available_numbers_for_sector(sector, tile_row, tile_col)
         
-    def find_tile_sector(self, tile_row, tile_col, visited):
+    def find_tile_sector(self, tile_row, tile_col):
+        visited = set()
         stack = [(tile_row, tile_col)]
         neighbours = []
         while stack:
-            tile_row, tile_col = stack.pop()
-            visited[tile_row][tile_col] = True
+            tile = stack.pop()
+            if tile in visited: continue
+            visited.add(tile)
+            tile_row, tile_col = tile
             neighbours.append((tile_row, tile_col))
 
             tile_border = self.get_tile(tile_row, tile_col).get_border()
-            if "u" not in tile_border and tile_row != 0 and not visited[tile_row-1][tile_col]:
+            if "u" not in tile_border and tile_row != 0 and (tile_row-1,tile_col) not in visited:
                 stack.append((tile_row - 1, tile_col))
-            if "l" not in tile_border and tile_col != 0 and not visited[tile_row][tile_col-1]:
+            if "l" not in tile_border and tile_col != 0 and (tile_row,tile_col-1) not in visited:
                 stack.append((tile_row, tile_col - 1))
-            if "r" not in tile_border and tile_col != self.dimension - 1 and not visited[tile_row][tile_col + 1]:
+            if "r" not in tile_border and tile_col != self.dimension - 1 and (tile_row,tile_col + 1) not in visited:
                 stack.append((tile_row, tile_col + 1))
-            if "d" not in tile_border and tile_row != self.dimension - 1 and not visited[tile_row+1][tile_col]:
+            if "d" not in tile_border and tile_row != self.dimension - 1 and (tile_row+1,tile_col) not in visited:
                 stack.append((tile_row + 1, tile_col))
         
         return neighbours
@@ -261,10 +259,8 @@ class Field:
 
     def check_sector(self, tile_row, tile_col):
         tile = self.get_tile(tile_row, tile_col)
-        sector_indexes = list(set(tile.get_sector()))
+        sector_indexes = tile.get_sector()
         label = tile.get_shadow_label()
-
-        print(sector_indexes)
 
         if len(label.split()) == 1:
             required_number = int(tile.get_label())
@@ -296,54 +292,57 @@ class Field:
         #return numbers_in_tiles in sortedAvailableNumbers
     
     def test_check_sector(self):
-        self.get_tile(0,0).set_number(5)
-        self.get_tile(0,1).set_number(2)
-        self.get_tile(0,2).set_number(4)
-        self.get_tile(0,3).set_number(6)
-        self.get_tile(0,4).set_number(3)
-        self.get_tile(0,5).set_number(1)
-
-        self.get_tile(1,0).set_number(3)
-        self.get_tile(1,1).set_number(6)
-        self.get_tile(1,2).set_number(1)
-        self.get_tile(1,3).set_number(2)
-        self.get_tile(1,4).set_number(4)
-        self.get_tile(1,5).set_number(5)
-
-        self.get_tile(2,0).set_number(4)
-        self.get_tile(2,1).set_number(1)
-        self.get_tile(2,2).set_number(5)
-        self.get_tile(2,3).set_number(3)
-        self.get_tile(2,4).set_number(6)
-        self.get_tile(2,5).set_number(2)
-
-        self.get_tile(3,0).set_number(6)
-        self.get_tile(3,1).set_number(3)
-        self.get_tile(3,2).set_number(2)
-        self.get_tile(3,3).set_number(1)
-        self.get_tile(3,4).set_number(5)
-        self.get_tile(3,5).set_number(4)
-
-        self.get_tile(4,0).set_number(2)
-        self.get_tile(4,1).set_number(5)
-        self.get_tile(4,2).set_number(3)
-        self.get_tile(4,3).set_number(4)
-        self.get_tile(4,4).set_number(1)
-        self.get_tile(4,5).set_number(6)
-
-        self.get_tile(5,0).set_number(1)
-        self.get_tile(5,1).set_number(4)
-        self.get_tile(5,2).set_number(6)
-        self.get_tile(5,3).set_number(5)
-        self.get_tile(5,4).set_number(2)
-        self.get_tile(5,5).set_number(3)
-
+        #visited = [[False for _ in range(self.dimension)] for _ in range(self.dimension)]
+        #print(visited)
+        print(self.get_tile(4,0).get_sector())
+        #self.get_tile(0,0).set_number(5)
+        #self.get_tile(0,1).set_number(2)
+        #self.get_tile(0,2).set_number(4)
+        #self.get_tile(0,3).set_number(6)
+        #self.get_tile(0,4).set_number(3)
+        #self.get_tile(0,5).set_number(1)
+#
+        #self.get_tile(1,0).set_number(3)
+        #self.get_tile(1,1).set_number(6)
+        #self.get_tile(1,2).set_number(1)
+        #self.get_tile(1,3).set_number(2)
+        #self.get_tile(1,4).set_number(4)
+        #self.get_tile(1,5).set_number(5)
+#
+        #self.get_tile(2,0).set_number(4)
+        #self.get_tile(2,1).set_number(1)
+        #self.get_tile(2,2).set_number(5)
+        #self.get_tile(2,3).set_number(3)
+        #self.get_tile(2,4).set_number(6)
+        #self.get_tile(2,5).set_number(2)
+#
+        #self.get_tile(3,0).set_number(6)
+        #self.get_tile(3,1).set_number(3)
+        #self.get_tile(3,2).set_number(2)
+        #self.get_tile(3,3).set_number(1)
+        #self.get_tile(3,4).set_number(5)
+        #self.get_tile(3,5).set_number(4)
+#
+        #self.get_tile(4,0).set_number(2)
+        #self.get_tile(4,1).set_number(5)
+        #self.get_tile(4,2).set_number(3)
+        #self.get_tile(4,3).set_number(4)
+        #self.get_tile(4,4).set_number(1)
+        #self.get_tile(4,5).set_number(6)
+#
+        #self.get_tile(5,0).set_number(1)
+        #self.get_tile(5,1).set_number(4)
+        #self.get_tile(5,2).set_number(6)
+        #self.get_tile(5,3).set_number(5)
+        #self.get_tile(5,4).set_number(2)
+        #self.get_tile(5,5).set_number(3)
+#
 
 
         #print(self.check_sector(0,0))
         #print(self.check_sector(0,1))
         #print(self.is_won())
-        print(self.check_sector(4,0))
+    #    print(self.check_sector(4,0))
 
     def is_valid_pick(self, row, col, chosed_num):
         #check row
@@ -610,7 +609,7 @@ class ConsoleUI:
         self.add_control_buttons()
         self.add_text_container()
         self.update()
-       # self.field.test_check_sector()
+        #self.field.test_check_sector()
         
     def add_control_buttons(self):
         container = tk.Frame(self.window)
