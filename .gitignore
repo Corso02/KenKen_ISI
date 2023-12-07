@@ -1,2 +1,4 @@
 /levels/node_modules
 test.py
+*.txt
+*.png
