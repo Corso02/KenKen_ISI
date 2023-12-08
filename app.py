@@ -73,7 +73,6 @@ class Tile:
         self.sector_len = len(sector)
     
     def set_available_numbers(self, availableNumbers):
-       # print(availableNumbers)
         self.availableNumbers = availableNumbers
         self.availableNumbersBeforeRemoval = array('i')
 
@@ -89,29 +88,17 @@ class Tile:
             idx += 1
             optionIdx += 1
             
-
     def remove_number_from_available_numbers(self, num_to_remove):
         if num_to_remove in self.availableNumbers:
             self.availableNumbers.remove(num_to_remove)
     
     def add_number_to_available_numbers(self, num_to_add):
-       # print(f"Pre ({self.row}, {self.col}) doplnam {num_to_add}")
-        #for idx in range(len(self.availableNumbers)):
-        #    print(f"kontrolujem kombinacie {idx} {len(self.availableNumbers[idx]) != len(self.availableNumbersBeforeRemoval[idx])} {num_to_add not in self.availableNumbers[idx]}")
-         #   print(f"{self.availableNumbers[idx]}, {self.availableNumbersBeforeRemoval[idx]}")
-
-         #   if len(self.availableNumbers[idx]) != len(self.availableNumbersBeforeRemoval[idx]) and num_to_add not in self.availableNumbers[idx]:
-          #      print(f"cislo {num_to_add} musim doplnit { self.availableNumbersBeforeRemoval[idx].count(num_to_add)} krat")
-          #      while(self.availableNumbers[idx].count(num_to_add) != self.availableNumbersBeforeRemoval[idx].count(num_to_add)):
-           #         self.availableNumbers[idx].append(num_to_add)
-           # print("--------------------------------------------------------------------------")
         if num_to_add in self.availableNumbersBeforeRemoval and num_to_add not in self.availableNumbers:
             self.availableNumbers.append(num_to_add)
 
 class Field:
     def __init__(self, dimension):
         self.dimension = dimension
-        self.max_row_count = 0 # pouzite pre kontrolu ci su cisla v riadku spravne (ci sa neopakuju)
         self.tiles = [0] * dimension 
         self.availableNumbersToChoose = [0] * dimension
         self.dfs_visited_tiles_count = 0
@@ -122,7 +109,6 @@ class Field:
         self.fwd_backtrack_count = 0
         for row in range(dimension):
             self.availableNumbersToChoose[row] = row + 1
-            self.max_row_count += (row + 1)
             tile_row = [0] * dimension
             for col in range(dimension):
                 tile_row[col] = Tile(row, col, 0)
@@ -153,35 +139,32 @@ class Field:
                 tile.show_available_numbers()
 
     def is_won(self):
-        for row in range(self.dimension):
-            count = 0
-            for col in range(self.dimension):
-                count += self.get_tile(row, col).get_number()
-        if count != self.max_row_count:
-            return False
         
-
+        # skontrolujem či sú v každom riadku jedinečné čísla
         for tile_row in self.tiles:
-            row_nums = set()
-            for tile in tile_row:
-                row_nums.add(tile.get_number())
+            row_nums = set([tile.get_number() for tile in tile_row])
             if len(row_nums) != self.dimension:
                 return False
         
-        
+        # skontrolujem či sú v každom stĺpci jedinečné čísla
         for col in range(len(self.tiles)):
             col_data = set([row[col].get_number() for row in self.tiles])
             if(len(col_data) != self.dimension):
                 return False
 
-        
+        # skontrolujem či sú jednotlivé sektory správne vyplnené
         for tileRow in self.tiles:
             for tile in tileRow:
                 if not self.check_sector(tile.get_row(), tile.get_col()):
                     return False
 
         return True
-    
+
+    def set_all_tiles_to_zero(self):
+        for tileRow in self.tiles:
+            for tile in tileRow:
+                tile.set_number(0)
+                
     def is_unique(self, resArr, arrToAppend):
         sortedArr = arrToAppend.copy()
         sortedArr.sort()
@@ -189,22 +172,21 @@ class Field:
 
     def find_combination(self, target, num_of_numbers, operand):
         resTuples = []
+        # prejdem všetkými možnými kombináciami čísle z dosupných čísel
         for combination in itertools.product(self.availableNumbersToChoose, repeat=num_of_numbers):
-            sorted_comb = tuple(sorted(combination))
-            if target == eval(operand.join(map(str, combination))) and sorted_comb not in resTuples:
+            # kombináciu si zotriedim
+            sorted_comb = tuple(sorted(combination)) 
+            # keď kombinácia ešte nebola pridaná do výslednych kombinacii a je s tými číslami a daným operandom získať výsledok, tak ho pridam do výsledných kombinácií
+            if sorted_comb not in resTuples and target == eval(operand.join(map(str, combination))):
                 resTuples.append(sorted_comb)
         
-        resArr = []
+        # vytvorim si set, kde pridam všetky čísla zo ziskaných kombinácií, set zaručí to, že sa nebudú čísla opakovať
+        resArr = set()
         for arr in resTuples:
             for number in arr:
-                resArr.append(number)
-        unique = set(resArr)
-        return list(unique)
-
-    def set_all_tiles_to_zero(self):
-        for tileRow in self.tiles:
-            for tile in tileRow:
-                tile.set_number(0)
+                resArr.add(number)
+        # vratim si jedinečné čísla ako list        
+        return list(resArr)
     
     def find_all_available_numbers_for_sector(self, sector, tile_row, tile_col):
         label = self.get_tile(tile_row, tile_col).get_shadow_label()
@@ -214,9 +196,10 @@ class Field:
         else:
             operand = label.split()[1]
         
+        # ak daný sektor nemá operand, tak to znamená, že jediné číslo, ktoré možem použiť je číslo sektora
         if operand == "":
             self.get_tile(tile_row, tile_col).set_available_numbers([int(number)])
-        else:
+        else: # inak zavolám funckiu, ktorá mi nájde všetky čísla pre daný sektor
             self.get_tile(tile_row, tile_col).set_available_numbers(self.find_combination(num_of_numbers=len(sector), operand=operand, target=int(number)))
         
     def get_sector(self, tile):
@@ -227,17 +210,20 @@ class Field:
         self.find_all_available_numbers_for_sector(sector, tile_row, tile_col)
         
     def find_tile_sector(self, tile_row, tile_col):
+        # udržiavam si informácie o tom či som dané poličko už nenavštívil
         visited = set()
         stack = [(tile_row, tile_col)]
-        neighbours = []
+        neighbours = [] # výsledok
         while stack:
-            tile = stack.pop()
-            if tile in visited: continue
-            visited.add(tile)
-            tile_row, tile_col = tile
-            neighbours.append((tile_row, tile_col))
+            tile = stack.pop() # vyberiem si záznam zo stacku
+            if tile in visited: continue # ak som dané políčko už navštívil, tak sa vrátim späť na začiatok cyklu
+            visited.add(tile) # pridám si súradnice polička do visited
+            tile_row, tile_col = tile # vyberiem si súradnice
+            neighbours.append((tile_row, tile_col)) # pridám ich do výsledného poľa
 
-            tile_border = self.get_tile(tile_row, tile_col).get_border()
+            tile_border = self.get_tile(tile_row, tile_col).get_border() #získam si hranice daného políčka
+
+            #na základe ohraničení pridám susedné políčka, ktoré ešte neboli navštívené
             if "u" not in tile_border and tile_row != 0 and (tile_row-1,tile_col) not in visited:
                 stack.append((tile_row - 1, tile_col))
             if "l" not in tile_border and tile_col != 0 and (tile_row,tile_col-1) not in visited:
@@ -246,10 +232,11 @@ class Field:
                 stack.append((tile_row, tile_col + 1))
             if "d" not in tile_border and tile_row != self.dimension - 1 and (tile_row+1,tile_col) not in visited:
                 stack.append((tile_row + 1, tile_col))
-        
+        #vrátim súradnice každého políčka v danom sektore
         return neighbours
     
     def sector_is_filled(self, tile_row, tile_col):
+        # kontrola či je celý sektor naplnený
         sector_indexes = self.get_tile(tile_row, tile_col).get_sector()
         for tile_cords in sector_indexes:
             tile_row, tile_col = tile_cords
@@ -258,100 +245,42 @@ class Field:
         return True
 
     def check_sector(self, tile_row, tile_col):
+        # kontrola správnosti vyplnenia sektoru
         tile = self.get_tile(tile_row, tile_col)
         sector_indexes = tile.get_sector()
         label = tile.get_shadow_label()
 
+        # daný sektor má iba jedno políčko, takže overujem zadané číslo
         if len(label.split()) == 1:
             required_number = int(tile.get_label())
             return required_number == tile.get_number()
 
-        required_number = int(label.split()[0])
+        # vyberiem si číslo a operand
+        required_number = int(label.split()[0]) 
         operand = label.split()[1]
+
+        # vyberiem si čísla z každého políčka v sektore
         numbers_in_tiles = []
         for tile_cords in sector_indexes:
             row, col = tile_cords
             numbers_in_tiles.append(self.get_tile(row, col).get_number())
 
+        # vytvorím si všetky permutácie čísel v políčku a následne skontrolujem či daná kombinácia je schopná s daným operandom vrátiť očakávaný výsledok
         combinations = itertools.permutations(numbers_in_tiles)
         for combination in combinations:
+            if operand == "/" and 0 in combination: return False
             if eval(operand.join(map(str, combination))) == required_number:
                 return True
 
         return False
 
-        #numbers_in_tiles.sort()
-        #availableNumbers = tile.get_available_numbers()
-        #sortedAvailableNumbers = []
-        
-        #for availableCombination in availableNumbers:
-        #    combo_list = list(availableCombination)
-        #    combo_list.sort()
-        #    sortedAvailableNumbers.append(combo_list)
-
-        #return numbers_in_tiles in sortedAvailableNumbers
-    
-    def test_check_sector(self):
-        #visited = [[False for _ in range(self.dimension)] for _ in range(self.dimension)]
-        #print(visited)
-        print(self.get_tile(4,0).get_sector())
-        #self.get_tile(0,0).set_number(5)
-        #self.get_tile(0,1).set_number(2)
-        #self.get_tile(0,2).set_number(4)
-        #self.get_tile(0,3).set_number(6)
-        #self.get_tile(0,4).set_number(3)
-        #self.get_tile(0,5).set_number(1)
-#
-        #self.get_tile(1,0).set_number(3)
-        #self.get_tile(1,1).set_number(6)
-        #self.get_tile(1,2).set_number(1)
-        #self.get_tile(1,3).set_number(2)
-        #self.get_tile(1,4).set_number(4)
-        #self.get_tile(1,5).set_number(5)
-#
-        #self.get_tile(2,0).set_number(4)
-        #self.get_tile(2,1).set_number(1)
-        #self.get_tile(2,2).set_number(5)
-        #self.get_tile(2,3).set_number(3)
-        #self.get_tile(2,4).set_number(6)
-        #self.get_tile(2,5).set_number(2)
-#
-        #self.get_tile(3,0).set_number(6)
-        #self.get_tile(3,1).set_number(3)
-        #self.get_tile(3,2).set_number(2)
-        #self.get_tile(3,3).set_number(1)
-        #self.get_tile(3,4).set_number(5)
-        #self.get_tile(3,5).set_number(4)
-#
-        #self.get_tile(4,0).set_number(2)
-        #self.get_tile(4,1).set_number(5)
-        #self.get_tile(4,2).set_number(3)
-        #self.get_tile(4,3).set_number(4)
-        #self.get_tile(4,4).set_number(1)
-        #self.get_tile(4,5).set_number(6)
-#
-        #self.get_tile(5,0).set_number(1)
-        #self.get_tile(5,1).set_number(4)
-        #self.get_tile(5,2).set_number(6)
-        #self.get_tile(5,3).set_number(5)
-        #self.get_tile(5,4).set_number(2)
-        #self.get_tile(5,5).set_number(3)
-#
-
-
-        #print(self.check_sector(0,0))
-        #print(self.check_sector(0,1))
-        #print(self.is_won())
-    #    print(self.check_sector(4,0))
-
     def is_valid_pick(self, row, col, chosed_num):
-        #check row
-
+        # skontrolujem či sa dané číslo už nenachádza v riadku
         for i in range(0, col):
             if self.get_tile(row, i).get_number() == chosed_num:
                 return False
         
-        ##check col
+        #  skontrolujem či sa dané číslo už nenachádza v stĺpci
         for i in range(0, row):
             if self.get_tile(i, col).get_number() == chosed_num:
                 return False
@@ -359,39 +288,49 @@ class Field:
         return True
 
     def backtracking_solve_helper(self, func_to_update_window, func_to_add_results, func_to_update_text):
-        start_time = time.time()
-        self.set_all_tiles_to_zero()
+        start_time = time.time() # zapneme časovač aby sme vedeli ako dlho hľadal alogritmus riešenie 
+        self.set_all_tiles_to_zero() # vynulujem herné pole
         func_to_update_window()
-        self.backtracking_visited_tiles_count = 0
-        self.backtracking_backtrack_count = 0
-        solved = self.backtracking(0,0,func_to_update_window, func_to_update_text)
-        end_time = time.time()
-        solve_time = end_time - start_time
-        func_to_add_results("Backtracking", self.backtracking_visited_tiles_count, solve_time, solved, 1, self.backtracking_backtrack_count)
+        self.backtracking_visited_tiles_count = 0 # zresetujem počet navštívených políčok pre algoritmus
+        self.backtracking_backtrack_count = 0 # zresetujem počet backtracking 
+        solved = self.backtracking(0,0,func_to_update_window, func_to_update_text) # zavolám funkciu pre alogritmus
+        end_time = time.time() # zastavím časovač
+        solve_time = end_time - start_time # vypočítam si počet sekúnd, ktoré potreboval algoritmus na vyriešenie
+        func_to_add_results("Backtracking", self.backtracking_visited_tiles_count, solve_time, solved, 1, self.backtracking_backtrack_count) # vypíšem výsledky
         func_to_update_window()
  
 
     def backtracking(self, row, col, update_window, update_text):
-        if(self.is_won()):
+        if(self.is_won()): # overím či herné pole nie je vo výhernej konfigurácii
             return True
         
+        # vypočítam si súradnice dalšieho políčka a určím si či tie súradnice sú vrámci herného poľa
         next_col = 0 if col == self.dimension - 1 else col + 1
         next_row = row if next_col != 0 else row + 1
         solve_next = True if (next_col < self.dimension and next_row < self.dimension) else False
 
+        # inkrementujem počet navštívených políčok
         self.backtracking_visited_tiles_count += 1
         update_text(self.backtracking_visited_tiles_count)
+        # budem postupne skúšať čísla od 1 po N 
         for num_to_add in range(1, self.dimension + 1):
+            # overím či to číslo neporušuje základné pravidlá hry (čísla sa nesmú opakovať v riadku ani v stĺpci)
             if(self.is_valid_pick(row,col,num_to_add)):
+                # ak je to vporiadku tak nastavím políčko na dané číslo
                 self.get_tile(row, col).set_number(num_to_add)
                 update_window()
+                # skontrolujem či som práve touto zmenou nedostal výhernú konfiguráciu
                 if(self.is_won()):
                     return True
+                # ak mám riešiť následjúce políčko tak rekurzívne zavolám túto funckiu so súradnicami dalšieho políčka, ak bude herné pole vyriešené postupne tak vrátim True
+                # a postupne vyjdem z rekurzie
                 if(solve_next and self.backtracking(next_row, next_col, update_window, update_text)):
                     return True
+                # dané číslo, pre dané políčko nie je vo výhernej konfigurácii, takže nastavím políčko na 0 a pokračujem ďalej v hľadaní
                 self.get_tile(row, col).set_number(0)
                 
                 update_window()
+        # nenašiel som správne riešnie, musím sa vrátiť naspäť
         self.backtracking_backtrack_count += 1
         return False
 
@@ -401,7 +340,6 @@ class Field:
         func_to_update_window()
         self.dfs_visited_tiles_count = 0
         self.dfs_backtrack_count = 0
-        print(self.dimension)
         solved = self.dfs(0,0,func_to_update_window, func_to_update_text)
         end_time = time.time()
         solve_time = end_time - start_time
@@ -409,59 +347,36 @@ class Field:
         func_to_update_window()
         
     def dfs(self, row, col, update_window, update_text):
+        # skontrolujem či už nemám výhernú kombináciu
         if(self.is_won()):
             return True
-        
-       
+        # vypočítam si súradnice dalšieho políčka a určím si či tie súradnice sú vrámci herného poľa
         next_col = 0 if col == self.dimension - 1 else col + 1
         next_row = row if next_col != 0 else row + 1
         solve_next = True if (next_col < self.dimension and next_row < self.dimension) else False
 
+        # inkrementujem počet navštívených políčok
         self.dfs_visited_tiles_count += 1  
-       # if(self.dfs_visited_tiles_count == 1947):
-        #    self.print_field()
         update_text(self.dfs_visited_tiles_count)
+        # postupne vyskúšam všetky čísla od 1 po N
         for num_to_add in range(1, self.dimension + 1):
+            # vrámci DFS algoritmu nekontrolujem pravidlá pri vkladaní čísel, skúšam všetky dotsupné možnosti pokiaľ nenarazím na výhernú kombináciu
             self.get_tile(row, col).set_number(num_to_add)
            
             update_window()
+            # skontrolujem či som zmenou čísla nezískal výhernú konfiguráciu
             if(self.is_won()):
                 return True
+            # ak mám riešiť následjúce políčko tak rekurzívne zavolám túto funckiu so súradnicami dalšieho políčka, ak bude herné pole vyriešené postupne tak vrátim True
+            # a postupne vyjdem z rekurzie
             if(solve_next and self.dfs(next_row, next_col, update_window, update_text)):
                 return True
+            # s daným číslom nebolo nájdené riešenie, takže zresetujem políčko a pokračujem ďalej v cykle
             self.get_tile(row, col).set_number(0)
             
             update_window()
-
+        # riešenie nebolo nájdené, musím sa vrátiť o jedno rekurzívne volanie späť
         self.dfs_backtrack_count += 1
-        return False
-
-    def forward_checking(self, row, col, update_window, update_text):
-        if self.is_won():
-            return True
-        # pridat counter na navstivene policka
-
-        next_col = 0 if col == self.dimension - 1 else col + 1
-        next_row = row if next_col != 0 else row + 1
-        solve_next = True if (next_col < self.dimension and next_row < self.dimension) else False
-        self.fwd_visited_tiles_count += 1
-        update_text(self.fwd_visited_tiles_count)
-        for num_to_add in range(1, self.dimension + 1):
-            if self.is_valid_pick(row, col, num_to_add) and self.forward_check_pick(row, col, num_to_add):
-                self.get_tile(row, col).set_number(num_to_add)
-                self.fwd_remove_available_numbers(row, col, num_to_add)
-                update_window()
-                if self.is_won():
-                    return True
-                if solve_next and self.forward_checking(next_row, next_col, update_window, update_text):
-                    return True
-                if self.is_won():
-                    return True
-                self.revert_forward_check_pick(row, col, num_to_add)
-                self.get_tile(row, col).set_number(0)
-                update_window()
-
-        self.fwd_backtrack_count += 1
         return False
 
     def forward_checking_solve_helper(self, func_to_update_window, func_to_add_results, func_to_update_text):
@@ -471,41 +386,82 @@ class Field:
         self.fwd_visited_tiles_count = 0
         self.fwd_backtrack_count = 0
         solved = self.forward_checking(0, 0, func_to_update_window, func_to_update_text)
-        #if not solved:
-        #    for tileRow in self.tiles:
-        #        for tile in tileRow:
-        #            print(tile.get_available_numbers())
         end_time = time.time()
         solve_time = end_time - start_time
         func_to_add_results("Forward check", self.fwd_visited_tiles_count, solve_time, solved, 2, self.fwd_backtrack_count)
         func_to_update_window()
+    
+    def forward_checking(self, row, col, update_window, update_text):
+        # skontrolujem či už nemám výhernú kombináciu
+        if self.is_won():
+            return True
+
+        # vypočítam si súradnice dalšieho políčka a určím si či tie súradnice sú vrámci herného poľa
+        next_col = 0 if col == self.dimension - 1 else col + 1
+        next_row = row if next_col != 0 else row + 1
+        solve_next = True if (next_col < self.dimension and next_row < self.dimension) else False
+        
+        # inkrementujem počet navštívených políčok
+        self.fwd_visited_tiles_count += 1
+        update_text(self.fwd_visited_tiles_count)
+
+        # postupne vyskúšam všetky čísla od 1 po N
+        for num_to_add in range(1, self.dimension + 1):
+            # overím si či dané číslo, v danom políčku spĺňa pravidlá hry a zároveň skontrolujem či by som po pridaní nespôsobil konflikt v niektorých z ostatných políčok v danom
+            # riadku a stĺpci
+            if self.is_valid_pick(row, col, num_to_add) and self.forward_check_pick(row, col, num_to_add):
+                # nastavím číslo ktoré nespôsobuje konflikty a neporušuje pravidlá na dané políčko
+                self.get_tile(row, col).set_number(num_to_add)
+                
+                # zadané číslo odstraním z dostupných čísel z políčok v danom riadku a danom stĺpci
+                self.fwd_remove_available_numbers(row, col, num_to_add)
+                update_window()
+                # skontrolujem či som zmenou čísla nezískal výhernú konfiguráciu
+                if self.is_won():
+                    return True
+                # ak mám riešiť následjúce políčko tak rekurzívne zavolám túto funckiu so súradnicami dalšieho políčka, ak bude herné pole vyriešené postupne tak vrátim True
+                # a postupne vyjdem z rekurzie
+                if solve_next and self.forward_checking(next_row, next_col, update_window, update_text):
+                    return True
+
+                # s daným číslom nebolo nájdené riešenie
+                # vrátim číslo do dostupných čísel pre ostatné políčka v danom riadku a danom stĺpci
+                self.revert_forward_check_pick(row, col, num_to_add)
+                # zresetujem dané políčko
+                self.get_tile(row, col).set_number(0)
+                update_window()
+
+        # riešenie nebolo možné nájst, musím sa vrátiť o rekurzívne volanie späť
+        self.fwd_backtrack_count += 1
+        return False
             
     def forward_check_pick(self, row, col, num_to_assign):
 
-        
+        # vezmem si všetky dostupné čísla pre dané políčko a skontrolujem či číslo, ktoré by sme chceli zadať sa nachádza v poli dostupných čísel
         available_numbers_tile = self.get_tile(row, col).get_available_numbers()
         if num_to_assign not in available_numbers_tile: return False
 
-        # check row
+        # skontrolujem či nejakému políčku v riadku nevyradím poslednú možnosť
         for i in range(col + 1, self.dimension):
             tile = self.get_tile(row, i)
             tile_available_numbers = tile.get_available_numbers()
-            if num_to_assign in tile_available_numbers:
-                if(len(tile_available_numbers) == 1): return False # nie su ziadne dostupne cisla
+            if num_to_assign in tile_available_numbers: 
+                if(len(tile_available_numbers) == 1): return False # po odstránení by neboli dostupné žiadne iné čísla
 
         
-         #check col
+         #skontrolujem či nejakému políčku v stĺpci nevyradím poslednú možnosť
         for i in range(row + 1, self.dimension):
             tile = self.get_tile(i, col)
             tile_available_numbers = tile.get_available_numbers()
             if num_to_assign in tile_available_numbers:
                 if(len(tile_available_numbers) == 1):
-                    return False # nie su dostupne ziadne ine cisla po odstraneni
+                    return False # nie su dostupné žiadne iné čísla po odstranení
 
-        
+        # všekto ok
         return True
 
     def fwd_remove_available_numbers(self, row, col, num):
+        # odstránim čísla z poľa dostupných čísel pre každé políčko v danom riadku a stĺpci
         for i in range(col + 1, self.dimension):
             self.get_tile(row, i).remove_number_from_available_numbers(num)
         
@@ -513,6 +469,7 @@ class Field:
             self.get_tile(i, col).remove_number_from_available_numbers(num)
 
     def revert_forward_check_pick(self, row, col, num_to_assign):
+        # vrátim odstranené čísla z poľa dostupných čísel pre každé políčko v danom riadku a stĺpci
         for i in range(col + 1, self.dimension):
             tile = self.get_tile(row, i)
             tile.add_number_to_available_numbers(num_to_assign)
@@ -521,16 +478,8 @@ class Field:
             tile = self.get_tile(i, col)
             tile.add_number_to_available_numbers(num_to_assign)
         
-                
-      
-
-    def print_field(self):
-        for i in range(self.dimension):
             
-            for j in range(self.dimension):
-                print(self.get_tile(i, j).get_number())
-            
-class ConsoleUI:
+class UI:
     def __init__(self, grid_dimension = 0):
         self.window = tk.Tk()
         self.window.title("KenKen")
@@ -549,6 +498,7 @@ class ConsoleUI:
         return 100
 
     def add_padding_to_cell(self,cell, row, col):
+        # na základe umiestnenia políčka mu nastavím padding
         if(col == 0):
             if(row == 0):
                 cell.grid(row=row, column=col, padx=(self.default_padding,0), pady=(self.default_padding,0,), sticky="nsew")
@@ -571,21 +521,23 @@ class ConsoleUI:
             cell.grid(row=row, column=col, sticky="nsew")
 
     def add_border_to_cell(self, cell, border):
-        #up
+        #nakreslím ohraničenia
+        
+        #hore
         cell.create_line(0, 0, 100, 0, fill=("black" if "u" in border else "lightgray"), width=2)
-        #right
+        #doprava
         cell.create_line(100, 0, 100, 100, fill=("black" if "r" in border else "lightgray"), width=2)
-        #down
+        #dole
         cell.create_line(0, 100, 100, 100, fill=("black" if "d" in border else "lightgray"), width=2)
-        #left
+        #doľava
         cell.create_line(0, 0, 0, 100, fill=("black" if "l" in border else "lightgray"), width= 2)
 	
 	
     def create_grid(self, tilesData):
         default_dimension = self.get_dimension_by_cell_count(self.dimension)
         field_cotainer = tk.Canvas(self.window)
-        hashmap = {}
 
+        # vyvtorím si políčka na základe dát zo súboru
         for tile in tilesData:
             row = int(tile['row'])
             col = int(tile['col'])
@@ -600,16 +552,15 @@ class ConsoleUI:
             
             self.field.set_tile(row,col,tile['label'],tile['border'], canvas=canvas, shadow_label=tile['shadow_label'])
         
+        # každému políčku nájdem jeho sektor
         for tileRow in self.field.get_tiles():
             for tile in tileRow:
                 self.field.get_sector(tile)
-                #tile.show_available_numbers()
         
         field_cotainer.grid(row = 0, column=0, columnspan=1)
-        self.add_control_buttons()
-        self.add_text_container()
-        self.update()
-        #self.field.test_check_sector()
+        self.add_control_buttons() # pridám tlačidlá 
+        self.add_text_container() # prídám text, ktorý sa bude aktualizovať počas bežania algoritmov
+        self.update() # aktualizujem tk okno
         
     def add_control_buttons(self):
         container = tk.Frame(self.window)
@@ -697,6 +648,7 @@ class ConsoleUI:
         self.text_container.grid(row=0, column=2, columnspan=1)
 
     def add_text_res(self, name, count, time, solved, col, backtrack_count):
+        # pridám výsledky algoritmu na obrazovku
         default_bg = self.window.cget("bg")
         default_relief = "flat"
         container = tk.Frame(self.text_container)
@@ -744,7 +696,7 @@ class ConsoleUI:
        
 
 
-ui = ConsoleUI()
+ui = UI()
 
 ui.main_menu()
 
